@@ -81,9 +81,9 @@ const restartWorker = () => {
   worker.value.postMessage({ type: 'init' });
 };
 
-const handleChunkStart = (index, duration) => {
+const handleChunkStart = (index) => {
   currentChunkIndex.value = index;
-  currentChunkDuration.value = duration;
+  currentChunkDuration.value = chunks.value[index]?.duration || 0;
 };
 
 const setIsPlaying = (playing) => {
@@ -329,7 +329,7 @@ onUnmounted(() => {
               :audio="chunk.audio"
               :active="currentChunkIndex === index"
               :playing="isPlaying"
-              @start="(duration) => handleChunkStart(index, duration)"
+              @start="() => handleChunkStart(index)"
               @pause="() => { if (currentChunkIndex === index) setIsPlaying(false) }"
               @end="handleChunkEnd"
             />

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 
 const props = defineProps({
   chunks: { type: Array, required: true },
@@ -30,15 +30,11 @@ const nextText = computed(() => {
   return i < props.chunks.length ? props.chunks[i].text : '';
 });
 
-async function startScroll() {
+function startScroll() {
   if (animation) {
-    const ct = getComputedStyle(trackEl.value).transform;
     animation.cancel();
     animation = null;
-    if (trackEl.value) trackEl.value.style.transform = ct;
   }
-
-  await nextTick();
 
   if (!viewportEl.value || !currEl.value || !trackEl.value) return;
   if (!props.duration || props.duration <= 0) return;
@@ -60,8 +56,7 @@ async function startScroll() {
   if (!props.playing) animation.pause();
 }
 
-watch(() => props.currentIndex, startScroll);
-watch(() => props.duration, (d) => { if (d > 0 && !animation) startScroll(); });
+watch([() => props.currentIndex, () => props.duration], startScroll, { flush: 'post' });
 watch(() => props.playing, (p) => { if (animation) p ? animation.play() : animation.pause(); });
 
 onMounted(startScroll);
