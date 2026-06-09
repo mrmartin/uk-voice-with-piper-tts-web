@@ -14,7 +14,7 @@ const currEl = ref(null);
 
 let animation = null;
 
-const SEP = ' · ';
+const SEP = ' ';
 
 const prevText = computed(() =>
   props.currentIndex > 0 ? props.chunks[props.currentIndex - 1].text : ''
