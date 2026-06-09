@@ -35,14 +35,6 @@ const chunks = ref([]);
 const result = ref(null);
 const currentChunkDuration = ref(0);
 
-const currentChunkText = computed(() => {
-  const i = currentChunkIndex.value;
-  if (i >= 0 && i < chunks.value.length) {
-    return chunks.value[i].text;
-  }
-  return '';
-});
-
 const processed = computed(() => {
   return lastGeneration.value &&
       lastGeneration.value.text === text.value &&
@@ -235,9 +227,9 @@ onUnmounted(() => {
         <div class="p-6 pb-0 space-y-6">
           <!-- Scrolling text display -->
           <ScrollingText
-            v-if="currentChunkText"
-            :key="currentChunkIndex"
-            :text="currentChunkText"
+            v-if="currentChunkIndex >= 0 && chunks.length > 0"
+            :chunks="chunks"
+            :current-index="currentChunkIndex"
             :duration="currentChunkDuration"
             :playing="isPlaying"
           />
