@@ -7,18 +7,16 @@ import {
   CopyIcon,
   CheckIcon,
   GithubIcon,
-  ExternalLinkIcon,
-  Heart
+  ExternalLinkIcon
 } from 'lucide-vue-next';
 import TextStatistics from './components/TextStatistics.vue';
-import VoiceSelector from './components/VoiceSelector.vue';
 import SpeedControl from './components/SpeedControl.vue';
 import ThemeToggle from './components/ThemeToggle.vue';
 import AudioChunk from './components/AudioChunk.vue';
 
 // State variables
 const text = ref(
-    "Hello there! Welcome to the Piper TTS demo! Piper TTS is a high-quality neural text-to-speech model that can run locally in your browser!"
+    "Hello there! Welcome to the UK voice demo. This uses the Cori voice from Piper TTS, running entirely in your browser."
 );
 const lastGeneration = ref(null);
 const isPlaying = ref(false);
@@ -28,8 +26,7 @@ const copied = ref(false);
 const status = ref("loading");
 const error = ref(null);
 const worker = ref(null);
-const voices = ref(null);
-const selectedVoice = ref(0);
+const modelReady = ref(false);
 const chunks = ref([]);
 const result = ref(null);
 
@@ -37,29 +34,11 @@ const result = ref(null);
 const processed = computed(() => {
   return lastGeneration.value &&
       lastGeneration.value.text === text.value &&
-      lastGeneration.value.speed === speed.value &&
-      lastGeneration.value.voice === selectedVoice.value;
+      lastGeneration.value.speed === speed.value;
 });
-
-// Methods
-const setSelectedVoice = (voice) => {
-  selectedVoice.value = voice;
-};
 
 const setSpeed = (newSpeed) => {
   speed.value = newSpeed;
-};
-
-const handleVoicePreview = (voiceId) => {
-  if (!worker.value || status.value !== "ready") return;
-  
-  // Send a preview request with a short phrase
-  worker.value.postMessage({
-    type: 'preview',
-    text: "Hello, this is a voice preview.",
-    voice: voiceId,
-    speed: speed.value
-  });
 };
 
 const restartWorker = () => {
@@ -67,9 +46,8 @@ const restartWorker = () => {
     worker.value.terminate();
   }
   
-  // Reset all audio and UI state
   status.value = "loading";
-  voices.value = null;
+  modelReady.value = false;
   chunks.value = [];
   result.value = null;
   lastGeneration.value = null; // Reset so button shows "Generate"
@@ -109,9 +87,8 @@ const handlePlayPause = () => {
     status.value = "generating";
     chunks.value = [];
     currentChunkIndex.value = 0;
-    const params = { 
-      text: text.value, 
-      voice: selectedVoice.value, 
+    const params = {
+      text: text.value,
       speed: speed.value
     };
     lastGeneration.value = params;
@@ -144,7 +121,7 @@ const onMessageReceived = ({ data }) => {
   switch (data.status) {
     case "ready":
       status.value = "ready";
-      voices.value = data.voices;
+      modelReady.value = true;
       break;
     case "error":
       status.value = "error";
@@ -195,27 +172,18 @@ onUnmounted(() => {
     <header class="sticky top-0 z-50 backdrop-blur-xl bg-white/80 dark:bg-gray-900/80 border-b border-gray-200/50 dark:border-gray-700/50">
       <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
         <div class="flex items-center gap-2">
-          <div class="text-3xl">🃏</div>
+          <div class="text-3xl">🇬🇧</div>
           <div>
             <h1 class="text-xl font-bold bg-gradient-to-r text-blue-800 dark:text-blue-500">
-              Piper TTS Demo
+              UK Voice Demo
             </h1>
-            <p class="text-sm text-muted-foreground hidden sm:block">Local text-to-speech in your browser</p>
+            <p class="text-sm text-muted-foreground hidden sm:block">Cori (British English) &middot; Piper TTS in your browser</p>
           </div>
         </div>
         
         <div class="flex items-center gap-3">
-          <a 
-            href="https://github.com/sponsors/clowerweb" 
-            target="_blank"
-            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-full bg-pink-100 hover:bg-pink-200 dark:bg-pink-900/30 dark:hover:bg-pink-900/50 text-pink-700 dark:text-pink-300 transition-colors"
-            title="Support this project"
-          >
-            <Heart class="w-4 h-4" />
-            <span class="hidden sm:inline">Sponsor</span>
-          </a>
-          <a 
-            href="https://github.com/clowerweb/piper-tts-web-demo"
+          <a
+            href="https://github.com/mrmartin/uk-voice-with-piper-tts-web"
             target="_blank"
             class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
           >
@@ -240,7 +208,7 @@ onUnmounted(() => {
                 v-model="text"
                 placeholder="Type or paste your text here..."
                 class="w-full min-h-[180px] text-lg leading-relaxed resize-y p-4 pt-8 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-purple-500 dark:focus:border-purple-400 focus:ring-0 transition-colors"
-                :class="voices ? '' : 'text-muted-foreground'"
+                :class="modelReady ? '' : 'text-muted-foreground'"
               ></textarea>
               <button
                 class="absolute top-1 right-3 h-10 w-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
@@ -258,29 +226,11 @@ onUnmounted(() => {
           </div>
 
           <!-- Controls Section -->
-          <div v-if="voices" class="space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <!-- Voice Selection -->
-              <div class="flex items-center">
-                <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mr-2">
-                  Voice:
-                </label>
-                <VoiceSelector
-                  :voices="voices"
-                  :selected-voice="selectedVoice"
-                  @voice-change="setSelectedVoice"
-                  @voice-preview="handleVoicePreview"
-                />
-              </div>
-
-              <!-- Speed Control -->
-              <div class="flex items-center">
-                <SpeedControl
-                  :speed="speed"
-                  @speed-change="setSpeed"
-                />
-              </div>
-            </div>
+          <div v-if="modelReady" class="flex items-center">
+            <SpeedControl
+              :speed="speed"
+              @speed-change="setSpeed"
+            />
           </div>
 
           <div v-else-if="error" class="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-sm">
@@ -336,14 +286,10 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <div class="max-w-4xl mx-auto px-4 py-4 mt-6 text-center">
+      <div class="max-w-4xl mx-auto px-4 py-4 mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
         <p>
-          Want more TTS demos? See my
-          <a
-            href="https://clowerweb.github.io/kitten-tts-web-demo/"
-            target="_blank"
-            class="text-blue-500 hover:text-orange-700 transition-all duration-300"
-          >Kitten TTS web demo</a>.
+          Voice model: <a href="https://huggingface.co/rhasspy/piper-voices/tree/main/en/en_GB/cori/high" target="_blank" class="text-blue-500 hover:text-blue-700 transition-colors">en_GB-cori-high</a>
+          &middot; Powered by <a href="https://github.com/rhasspy/piper" target="_blank" class="text-blue-500 hover:text-blue-700 transition-colors">Piper TTS</a>
         </p>
       </div>
     </main>
