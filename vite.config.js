@@ -6,7 +6,7 @@ import vue from "@vitejs/plugin-vue";
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: process.env.NODE_ENV === 'production' ? '/piper-tts-web-demo/' : '/',
+  base: process.env.NODE_ENV === 'production' ? '/uk-voice-with-piper-tts-web/' : '/',
   plugins: [
     tailwindcss(), 
     vue(),
@@ -22,14 +22,6 @@ export default defineConfig({
             res.setHeader('Content-Type', 'application/javascript');
             res.setHeader('Access-Control-Allow-Origin', '*');
           }
-          next();
-        });
-        
-        // Add caching for model files
-        server.middlewares.use('/tts-model', (req, res, next) => {
-          // Cache model files for 7 days (604800 seconds)
-          res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
-          res.setHeader('ETag', `"model-v1"`);
           next();
         });
       }

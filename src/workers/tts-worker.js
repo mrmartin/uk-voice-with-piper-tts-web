@@ -2,89 +2,67 @@ import { PiperTTS, TextSplitterStream } from "../lib/piper-tts.js";
 
 let tts = null;
 
-// Initialize the model
+const MODEL_BASE = 'https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/cori/high';
+
 async function initializeModel() {
   try {
-    // Load the Piper model and config
-    const modelPath = `${import.meta.env.BASE_URL}tts-model/en_US-libritts_r-medium.onnx`;
-    const configPath = `${import.meta.env.BASE_URL}tts-model/en_US-libritts_r-medium.onnx.json`;
-    
+    const modelPath = `${MODEL_BASE}/en_GB-cori-high.onnx`;
+    const configPath = `${MODEL_BASE}/en_GB-cori-high.onnx.json`;
+
     tts = await PiperTTS.from_pretrained(modelPath, configPath);
-    
-    // Get available speakers
-    const speakers = tts.getSpeakers();
-    
-    self.postMessage({ status: "ready", voices: speakers });
+
+    self.postMessage({ status: "ready" });
   } catch (e) {
     console.error("Error loading model:", e);
     self.postMessage({ status: "error", data: e.message });
   }
 }
 
-// Handle voice preview
-async function handlePreview(text, voice, speed) {
+async function handlePreview(text, speed) {
   try {
     const streamer = new TextSplitterStream();
     streamer.push(text);
     streamer.close();
 
-    const speakerId = typeof voice === 'number' ? voice : parseInt(voice) || 0;
     const lengthScale = 1.0 / (speed || 1.0);
-    
-    const stream = tts.stream(streamer, { 
-      speakerId, 
-      lengthScale
-    });
 
-    // Get just the first chunk for preview
+    const stream = tts.stream(streamer, { lengthScale });
+
     for await (const { audio } of stream) {
-      // Create and play preview audio
       const audioBlob = audio.toBlob();
       self.postMessage({ status: "preview", audio: audioBlob });
-      break; // Only preview the first chunk
+      break;
     }
   } catch (error) {
     console.error('Error generating preview:', error);
   }
 }
 
-// Listen for messages from the main thread
 self.addEventListener("message", async (e) => {
-  const { type, text, voice, speed } = e.data;
-  
-  // Handle initialization
+  const { type, text, speed } = e.data;
+
   if (type === 'init') {
     await initializeModel();
     return;
   }
-  
-  // Handle TTS generation
+
   if (!tts) {
     self.postMessage({ status: "error", data: "Model not initialized" });
     return;
   }
-  
-  // Handle voice preview
+
   if (type === 'preview') {
-    await handlePreview(text, voice, speed);
+    await handlePreview(text, speed);
     return;
   }
-  
+
   const streamer = new TextSplitterStream();
-
   streamer.push(text);
-  streamer.close(); // Indicate we won't add more text
+  streamer.close();
 
-  // Convert voice from voice ID to speaker ID
-  const speakerId = typeof voice === 'number' ? voice : parseInt(voice) || 0;
-  
-  // Convert speed to lengthScale (inverse relationship: higher speed = lower lengthScale)
   const lengthScale = 1.0 / (speed || 1.0);
-  
-  const stream = tts.stream(streamer, { 
-    speakerId, 
-    lengthScale
-  });
+
+  const stream = tts.stream(streamer, { lengthScale });
   const chunks = [];
 
   try {
