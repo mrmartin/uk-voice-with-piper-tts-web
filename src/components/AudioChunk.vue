@@ -13,34 +13,30 @@ const props = defineProps({
   playing: {
     type: Boolean,
     required: true
-  },
-  onStart: {
-    type: Function,
-    default: () => {}
-  },
-  onEnd: {
-    type: Function,
-    default: () => {}
-  },
-  onPause: {
-    type: Function,
-    default: () => {}
   }
 });
 
+const emit = defineEmits(['start', 'pause', 'end']);
+
 const audioRef = ref(null);
 
-// Create URL for the audio blob
 const url = computed(() => {
   return URL.createObjectURL(props.audio);
 });
 
+const handlePlay = () => {
+  emit('start', audioRef.value?.duration || 0);
+};
+
 const handlePause = () => {
   if (audioRef.value?.ended) return;
-  props.onPause();
-}
+  emit('pause');
+};
 
-// Watch for changes in active/playing state
+const handleEnded = () => {
+  emit('end');
+};
+
 watch([() => props.active, () => props.playing], ([newActive, newPlaying]) => {
   if (!audioRef.value) return;
   if (!newActive) return;
@@ -55,17 +51,12 @@ watch([() => props.active, () => props.playing], ([newActive, newPlaying]) => {
   }
 });
 
-// Handle audio element lifecycle
 onMounted(() => {
   if (!props.audio) return;
   if (!audioRef.value) return;
 
   if (props.active) {
     audioRef.value.play();
-    audioRef.value.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
   } else {
     audioRef.value.pause();
     audioRef.value.currentTime = 0;
@@ -73,7 +64,6 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  // Revoke the object URL to free memory
   URL.revokeObjectURL(url.value);
 });
 </script>
@@ -82,9 +72,8 @@ onUnmounted(() => {
   <audio
     ref="audioRef"
     :src="url"
-    controls
-    @play="onStart"
+    @play="handlePlay"
     @pause="handlePause"
-    @ended="onEnd"
+    @ended="handleEnded"
   ></audio>
 </template>

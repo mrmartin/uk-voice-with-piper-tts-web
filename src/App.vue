@@ -14,6 +14,7 @@ import VoiceSelector from './components/VoiceSelector.vue';
 import SpeedControl from './components/SpeedControl.vue';
 import ThemeToggle from './components/ThemeToggle.vue';
 import AudioChunk from './components/AudioChunk.vue';
+import ScrollingText from './components/ScrollingText.vue';
 
 // State variables
 const text = ref(
@@ -32,6 +33,15 @@ const voices = ref([]);
 const selectedVoice = ref('cori-high');
 const chunks = ref([]);
 const result = ref(null);
+const currentChunkDuration = ref(0);
+
+const currentChunkText = computed(() => {
+  const i = currentChunkIndex.value;
+  if (i >= 0 && i < chunks.value.length) {
+    return chunks.value[i].text;
+  }
+  return '';
+});
 
 const processed = computed(() => {
   return lastGeneration.value &&
@@ -79,8 +89,9 @@ const restartWorker = () => {
   worker.value.postMessage({ type: 'init' });
 };
 
-const setCurrentChunkIndex = (index) => {
+const handleChunkStart = (index, duration) => {
   currentChunkIndex.value = index;
+  currentChunkDuration.value = duration;
 };
 
 const setIsPlaying = (playing) => {
@@ -222,6 +233,15 @@ onUnmounted(() => {
       <!-- Main Card -->
       <div class="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 dark:border-gray-700/50 overflow-hidden">
         <div class="p-6 pb-0 space-y-6">
+          <!-- Scrolling text display -->
+          <ScrollingText
+            v-if="currentChunkText"
+            :key="currentChunkIndex"
+            :text="currentChunkText"
+            :duration="currentChunkDuration"
+            :playing="isPlaying"
+          />
+
           <!-- Text Input Section -->
           <div class="space-y-4">
             <div class="relative">
@@ -317,8 +337,7 @@ onUnmounted(() => {
               :audio="chunk.audio"
               :active="currentChunkIndex === index"
               :playing="isPlaying"
-              class="hidden"
-              @start="() => setCurrentChunkIndex(index)"
+              @start="(duration) => handleChunkStart(index, duration)"
               @pause="() => { if (currentChunkIndex === index) setIsPlaying(false) }"
               @end="handleChunkEnd"
             />
