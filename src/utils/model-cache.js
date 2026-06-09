@@ -41,15 +41,8 @@ class ModelCache {
       request.onsuccess = () => {
         const result = request.result;
         if (result) {
-          // Check if cache is still valid (7 days)
-          const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
-          if (Date.now() - result.timestamp < maxAge) {
-            resolve(result.data);
-            return;
-          } else {
-            // Cache expired, remove it
-            this.delete(url);
-          }
+          resolve(result.data);
+          return;
         }
         resolve(null);
       };
