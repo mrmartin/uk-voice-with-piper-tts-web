@@ -6,15 +6,15 @@ let currentVoice = null;
 const HF_BASE = 'https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB';
 
 const VOICES = {
-  'cori-high': {
-    name: 'Cori (High)',
-    model: `${HF_BASE}/cori/high/en_GB-cori-high.onnx`,
-    config: `${HF_BASE}/cori/high/en_GB-cori-high.onnx.json`,
-  },
   'alan-medium': {
-    name: 'Alan (Medium)',
+    name: 'Alan (Male)',
     model: `${HF_BASE}/alan/medium/en_GB-alan-medium.onnx`,
     config: `${HF_BASE}/alan/medium/en_GB-alan-medium.onnx.json`,
+  },
+  'cori-high': {
+    name: 'Cori (Female)',
+    model: `${HF_BASE}/cori/high/en_GB-cori-high.onnx`,
+    config: `${HF_BASE}/cori/high/en_GB-cori-high.onnx.json`,
   },
 };
 
@@ -29,8 +29,8 @@ async function loadVoice(voiceId) {
 async function initializeModel() {
   try {
     const voiceList = Object.entries(VOICES).map(([id, v]) => ({ id, name: v.name }));
-    await loadVoice('cori-high');
-    self.postMessage({ status: "ready", voices: voiceList, voice: 'cori-high' });
+    await loadVoice('alan-medium');
+    self.postMessage({ status: "ready", voices: voiceList, voice: 'alan-medium' });
   } catch (e) {
     console.error("Error loading model:", e);
     self.postMessage({ status: "error", data: e.message });

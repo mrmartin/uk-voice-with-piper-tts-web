@@ -30,7 +30,7 @@ const error = ref(null);
 const worker = ref(null);
 const modelReady = ref(false);
 const voices = ref([]);
-const selectedVoice = ref('cori-high');
+const selectedVoice = ref('alan-medium');
 const chunks = ref([]);
 const result = ref(null);
 const currentChunkDuration = ref(0);
@@ -207,7 +207,7 @@ onUnmounted(() => {
         
         <div class="flex items-center gap-3">
           <a
-            href="https://github.com/mrmartin/uk-voice-with-piper-tts-web"
+            href="https://github.com/mrmartin/speech"
             target="_blank"
             class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
           >
