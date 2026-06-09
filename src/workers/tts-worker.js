@@ -104,6 +104,7 @@ self.addEventListener("message", async (e) => {
         chunk: {
           audio: audio.toBlob(),
           text,
+          duration: audio.audio.length / audio.sampling_rate,
         },
       });
       chunks.push(audio);
