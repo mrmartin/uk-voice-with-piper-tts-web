@@ -1,17 +1,36 @@
 import { PiperTTS, TextSplitterStream } from "../lib/piper-tts.js";
 
 let tts = null;
+let currentVoice = null;
 
-const MODEL_BASE = 'https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/cori/high';
+const HF_BASE = 'https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB';
+
+const VOICES = {
+  'cori-high': {
+    name: 'Cori (High)',
+    model: `${HF_BASE}/cori/high/en_GB-cori-high.onnx`,
+    config: `${HF_BASE}/cori/high/en_GB-cori-high.onnx.json`,
+  },
+  'alan-medium': {
+    name: 'Alan (Medium)',
+    model: `${HF_BASE}/alan/medium/en_GB-alan-medium.onnx`,
+    config: `${HF_BASE}/alan/medium/en_GB-alan-medium.onnx.json`,
+  },
+};
+
+async function loadVoice(voiceId) {
+  const voice = VOICES[voiceId];
+  if (!voice) throw new Error(`Unknown voice: ${voiceId}`);
+
+  tts = await PiperTTS.from_pretrained(voice.model, voice.config);
+  currentVoice = voiceId;
+}
 
 async function initializeModel() {
   try {
-    const modelPath = `${MODEL_BASE}/en_GB-cori-high.onnx`;
-    const configPath = `${MODEL_BASE}/en_GB-cori-high.onnx.json`;
-
-    tts = await PiperTTS.from_pretrained(modelPath, configPath);
-
-    self.postMessage({ status: "ready" });
+    const voiceList = Object.entries(VOICES).map(([id, v]) => ({ id, name: v.name }));
+    await loadVoice('cori-high');
+    self.postMessage({ status: "ready", voices: voiceList, voice: 'cori-high' });
   } catch (e) {
     console.error("Error loading model:", e);
     self.postMessage({ status: "error", data: e.message });
@@ -39,10 +58,23 @@ async function handlePreview(text, speed) {
 }
 
 self.addEventListener("message", async (e) => {
-  const { type, text, speed } = e.data;
+  const { type, text, speed, voice } = e.data;
 
   if (type === 'init') {
     await initializeModel();
+    return;
+  }
+
+  if (type === 'switchVoice') {
+    if (voice === currentVoice) return;
+    try {
+      self.postMessage({ status: "loading" });
+      await loadVoice(voice);
+      self.postMessage({ status: "ready", voice });
+    } catch (err) {
+      console.error("Error switching voice:", err);
+      self.postMessage({ status: "error", data: err.message });
+    }
     return;
   }
 

@@ -10,13 +10,14 @@ import {
   ExternalLinkIcon
 } from 'lucide-vue-next';
 import TextStatistics from './components/TextStatistics.vue';
+import VoiceSelector from './components/VoiceSelector.vue';
 import SpeedControl from './components/SpeedControl.vue';
 import ThemeToggle from './components/ThemeToggle.vue';
 import AudioChunk from './components/AudioChunk.vue';
 
 // State variables
 const text = ref(
-    "Hello there! Welcome to the UK voice demo. This uses the Cori voice from Piper TTS, running entirely in your browser."
+    "Hello there! Welcome to the UK voice demo. This uses British English voices from Piper TTS, running entirely in your browser."
 );
 const lastGeneration = ref(null);
 const isPlaying = ref(false);
@@ -27,18 +28,31 @@ const status = ref("loading");
 const error = ref(null);
 const worker = ref(null);
 const modelReady = ref(false);
+const voices = ref([]);
+const selectedVoice = ref('cori-high');
 const chunks = ref([]);
 const result = ref(null);
 
-// Computed properties
 const processed = computed(() => {
   return lastGeneration.value &&
       lastGeneration.value.text === text.value &&
-      lastGeneration.value.speed === speed.value;
+      lastGeneration.value.speed === speed.value &&
+      lastGeneration.value.voice === selectedVoice.value;
 });
 
 const setSpeed = (newSpeed) => {
   speed.value = newSpeed;
+};
+
+const handleVoiceChange = (voiceId) => {
+  if (voiceId === selectedVoice.value) return;
+  selectedVoice.value = voiceId;
+  isPlaying.value = false;
+  chunks.value = [];
+  result.value = null;
+  lastGeneration.value = null;
+  currentChunkIndex.value = -1;
+  worker.value?.postMessage({ type: 'switchVoice', voice: voiceId });
 };
 
 const restartWorker = () => {
@@ -89,7 +103,8 @@ const handlePlayPause = () => {
     currentChunkIndex.value = 0;
     const params = {
       text: text.value,
-      speed: speed.value
+      speed: speed.value,
+      voice: selectedVoice.value
     };
     lastGeneration.value = params;
     worker.value?.postMessage(params);
@@ -122,6 +137,12 @@ const onMessageReceived = ({ data }) => {
     case "ready":
       status.value = "ready";
       modelReady.value = true;
+      if (data.voices) voices.value = data.voices;
+      if (data.voice) selectedVoice.value = data.voice;
+      break;
+    case "loading":
+      status.value = "loading";
+      modelReady.value = false;
       break;
     case "error":
       status.value = "error";
@@ -177,7 +198,7 @@ onUnmounted(() => {
             <h1 class="text-xl font-bold bg-gradient-to-r text-blue-800 dark:text-blue-500">
               UK Voice Demo
             </h1>
-            <p class="text-sm text-muted-foreground hidden sm:block">Cori (British English) &middot; Piper TTS in your browser</p>
+            <p class="text-sm text-muted-foreground hidden sm:block">British English &middot; Piper TTS in your browser</p>
           </div>
         </div>
         
@@ -226,11 +247,30 @@ onUnmounted(() => {
           </div>
 
           <!-- Controls Section -->
-          <div v-if="modelReady" class="flex items-center">
-            <SpeedControl
-              :speed="speed"
-              @speed-change="setSpeed"
-            />
+          <div v-if="voices.length > 0" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="flex items-center">
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mr-2 whitespace-nowrap">
+                  Voice:
+                </label>
+                <VoiceSelector
+                  :voices="voices"
+                  :selected-voice="selectedVoice"
+                  :disabled="status === 'loading'"
+                  @voice-change="handleVoiceChange"
+                />
+              </div>
+              <div class="flex items-center">
+                <SpeedControl
+                  :speed="speed"
+                  @speed-change="setSpeed"
+                />
+              </div>
+            </div>
+            <div v-if="status === 'loading'" class="flex items-center gap-2 text-muted-foreground text-sm">
+              <div class="animate-spin w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full"></div>
+              <span>Loading voice model...</span>
+            </div>
           </div>
 
           <div v-else-if="error" class="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-sm">
@@ -288,7 +328,7 @@ onUnmounted(() => {
 
       <div class="max-w-4xl mx-auto px-4 py-4 mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
         <p>
-          Voice model: <a href="https://huggingface.co/rhasspy/piper-voices/tree/main/en/en_GB/cori/high" target="_blank" class="text-blue-500 hover:text-blue-700 transition-colors">en_GB-cori-high</a>
+          Voices from <a href="https://huggingface.co/rhasspy/piper-voices/tree/main/en/en_GB" target="_blank" class="text-blue-500 hover:text-blue-700 transition-colors">rhasspy/piper-voices</a>
           &middot; Powered by <a href="https://github.com/rhasspy/piper" target="_blank" class="text-blue-500 hover:text-blue-700 transition-colors">Piper TTS</a>
         </p>
       </div>
